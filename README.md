@@ -12,4 +12,4 @@
 # 참고
 
 * 2017년 투표구별 대선결과 자료는 엑셀형식으로 [여기서](http://www.nec.go.kr/portal/bbs/view/B0000338/36213.do?menuNo=200185) 직접 받으실 수 있습니다.
-
+* 각종 사회경제지표와 시군구결과와의 비교는 [오마이뉴스의 깃헙](https://github.com/OhmyNews/2017-Election) 에서 확인하십시오.
