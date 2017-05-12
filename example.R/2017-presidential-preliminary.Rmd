@@ -500,6 +500,12 @@ summary(lm(투표율.2017 ~ 투표율.2016 - 1, data = 비교.총선2016))
   # scale_colour_manual(
   #  values=지역색
   # ) +
+  scale_colour_manual(
+   name="시/군",
+   values=c("salmon", "blue"),
+   breaks=c(TRUE, FALSE),
+   labels=c("시", "군")
+  ) +
   labs(x="읍면동 소속 시군구인지?", y="2017년 대선 자유한국당 득표율/2016년 총선 새누리당 득표율") +
   ggtitle("읍면동(행정동)별 2016년 총선 새누리 대 2017년 대선 자유한국당 득표율 비율 (영남)\n(관외사전투표/재외투표 제외)")
 ```
@@ -623,9 +629,17 @@ summary(lm(투표율.2017 ~ 투표율.2016 - 1, data = 비교.총선2016))
                   ),
     aes(label=paste0(시군구, " ", 읍면동))
   ) +
-  # scale_colour_manual(
-  #  values=지역색
-  # ) +
+  scale_colour_manual(
+   name="강남3구여부",
+   values=c("salmon", "blue"),
+   breaks=c(TRUE, FALSE),
+   labels=c("강남3구", "그외")
+  ) +
+  theme(
+    legend.position = c(0.9, 0.1),
+    legend.background = element_rect(color = "black", 
+    size = 0.5, linetype = "solid")
+  ) +
   labs(x="2016년 총선 비례대표 새누리당 득표율", y="2017년 대선 바른정당 득표율") +
   ggtitle(
     label="읍면동(행정동)별 2016년 총선 대 2017년 대선 바른정당 득표율 변화 (서울특별시)",
@@ -654,9 +668,6 @@ summary(lm(투표율.2017 ~ 투표율.2016 - 1, data = 비교.총선2016))
   #                 ),
   #   aes(label=paste0(시군구, " ", 읍면동))
   # ) +
-  scale_colour_manual(
-   values=지역색
-  ) +
   labs(x="2016년 총선 비례대표 정의당 득표율", y="2017년 대선 정의당 득표율") +
   ggtitle(
     label="읍면동(행정동)별 2016년 총선 대 2017년 대선 정의당후보 득표율 변화",
