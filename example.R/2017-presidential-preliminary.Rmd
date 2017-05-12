@@ -235,7 +235,7 @@ head(비교.총선2016[비교.총선2016$선거인수.2017 / 비교.총선2016$�
   geom_hline(yintercept = 1.0, linetype = "dashed") +
   scale_y_continuous(breaks=c(0.5, 1.0, 1.5, 2.0, 2.5)) +
   geom_text_repel(
-    family="Batang",
+    family="NanumBarunGothic",
     data=filter(비교.총선2016, 
                   !grepl("투표$", 읍면동), 
                   (선거인수.2017/선거인수.2016 >= 1.5)|(선거인수.2017/선거인수.2016 <= 0.5)
@@ -319,6 +319,7 @@ summary(lm(투표율.2017 ~ 투표율.2016 - 1, data = 비교.총선2016))
   geom_abline(slope = 1.0, linetype = "dashed", colour="grey") +
 #  scale_y_continuous(breaks=c(0.5, 1.0, 1.5, 2.0, 2.5)) +
   geom_text_repel(
+    family="NanumBarunGothic",
     data=filter(비교.총선2016, 주의지역),
     aes(label="*")
   ) +
@@ -359,11 +360,12 @@ summary(lm(투표율.2017 ~ 투표율.2016 - 1, data = 비교.총선2016))
   geom_abline(slope = 1.0, linetype = "dashed", colour="grey") +
 #  scale_y_continuous(breaks=c(0.5, 1.0, 1.5, 2.0, 2.5)) +
   geom_text_repel(
+    family="NanumBarunGothic",
     data=filter(비교.총선2016, 주의지역),
     aes(label="*")
   ) +
   geom_text_repel(
-    family="Batang",
+    family="NanumBarunGothicBold",
     data=filter(비교.총선2016,
                   !grepl("투표$", 읍면동),
                   더불어민주당.2017/투표인수 < 더불어민주당.2016/투표수
@@ -390,6 +392,7 @@ summary(lm(투표율.2017 ~ 투표율.2016 - 1, data = 비교.총선2016))
   geom_abline(slope = 1.0, linetype = "dashed", colour="grey") +
 #  scale_y_continuous(breaks=c(0.5, 1.0, 1.5, 2.0, 2.5)) +
   geom_text_repel(
+    family="NanumBarunGothic",
     data=filter(비교.총선2016, 주의지역),
     aes(label="*")
   ) +
@@ -420,6 +423,7 @@ summary(lm(투표율.2017 ~ 투표율.2016 - 1, data = 비교.총선2016))
   geom_abline(slope = 1.0, linetype = "dashed", colour="grey") +
 #  scale_y_continuous(breaks=c(0.5, 1.0, 1.5, 2.0, 2.5)) +
   geom_text_repel(
+    family="NanumBarunGothic",
     data=filter(비교.총선2016, 주의지역),
     aes(label="*")
   ) +
@@ -450,6 +454,7 @@ summary(lm(투표율.2017 ~ 투표율.2016 - 1, data = 비교.총선2016))
   geom_abline(slope = 1.0, linetype = "dashed", colour="grey") +
 #  scale_y_continuous(breaks=c(0.5, 1.0, 1.5, 2.0, 2.5)) +
   geom_text_repel(
+    family="NanumBarunGothic",
     data=filter(비교.총선2016, 주의지역, 권역 == "영남"),
     aes(label="*")
   ) +
@@ -480,6 +485,7 @@ summary(lm(투표율.2017 ~ 투표율.2016 - 1, data = 비교.총선2016))
   geom_boxplot() +
   geom_jitter(alpha=0.5) +
   geom_text_repel(
+    family="NanumBarunGothic",
     data=filter(비교.총선2016, 주의지역, 권역 == "영남"),
     aes(label="*")
   ) +
@@ -508,7 +514,8 @@ summary(lm(투표율.2017 ~ 투표율.2016 - 1, data = 비교.총선2016))
   geom_abline(slope = 1.0, linetype = "dashed", colour="grey") +
 #  scale_y_continuous(breaks=c(0.5, 1.0, 1.5, 2.0, 2.5)) +
   geom_text_repel(
-    data=filter(비교.총선2016, 주의지역),
+   family="NanumBarunGothic",
+   data=filter(비교.총선2016, 주의지역),
     aes(label="*")
   ) +
   # geom_text_repel(
@@ -539,11 +546,12 @@ summary(lm(투표율.2017 ~ 투표율.2016 - 1, data = 비교.총선2016))
   geom_abline(slope = 1.0, linetype = "dashed", colour="grey") +
 #  scale_y_continuous(breaks=c(0.5, 1.0, 1.5, 2.0, 2.5)) +
   geom_text_repel(
+    family="NanumBarunGothic",
     data=filter(비교.총선2016, 주의지역, 권역 == "호남"),
     aes(label="*")
   ) +
   geom_text_repel(
-    family="Batang",
+    family="NanumBarunGothic",
     data=filter(비교.총선2016,
                   !grepl("투표$", 읍면동), 권역 == "호남",
                   국민의당.2017/투표인수 > 국민의당.2016/투표수
@@ -570,6 +578,7 @@ summary(lm(투표율.2017 ~ 투표율.2016 - 1, data = 비교.총선2016))
   geom_abline(slope = 1.0, linetype = "dashed", colour="grey") +
 #  scale_y_continuous(breaks=c(0.5, 1.0, 1.5, 2.0, 2.5)) +
   geom_text_repel(
+    family="NanumBarunGothic",
     data=filter(비교.총선2016, 주의지역),
     aes(label="*")
   ) +
@@ -601,11 +610,12 @@ summary(lm(투표율.2017 ~ 투표율.2016 - 1, data = 비교.총선2016))
   geom_abline(slope = 1.0, linetype = "dashed", colour="grey") +
 #  scale_y_continuous(breaks=c(0.5, 1.0, 1.5, 2.0, 2.5)) +
   geom_text_repel(
+    family="NanumBarunGothic",
     data=filter(비교.총선2016, 주의지역, 광역 == "서울특별시"),
     aes(label="*")
   ) +
   geom_text_repel(
-    family="Batang",
+    family="NanumBarunGothic",
     data=filter(비교.총선2016, 광역 == "서울특별시",
                   !grepl("투표$", 읍면동),
                   !(시군구 %in% c("강남구", "서초구", "송파구")),
@@ -632,6 +642,7 @@ summary(lm(투표율.2017 ~ 투표율.2016 - 1, data = 비교.총선2016))
   geom_abline(slope = 1.0, linetype = "dashed", colour="grey") +
 #  scale_y_continuous(breaks=c(0.5, 1.0, 1.5, 2.0, 2.5)) +
   geom_text_repel(
+    family="NanumBarunGothic",
     data=filter(비교.총선2016, 주의지역),
     aes(label="*")
   ) +
