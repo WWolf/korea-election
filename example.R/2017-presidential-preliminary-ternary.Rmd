@@ -1,0 +1,335 @@
+---
+title: "2017년 대선 결과 낯선 시각화 (3자구도) 예제"
+author: '@nobody_indepth'
+date: "5/17/2017"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,
+                      fig.path='2017_presidential/unconventional/',
+                      fig.width=12, fig.height=8,
+                      echo=FALSE, warning=FALSE, message=FALSE)
+library(tidyverse)
+library(extrafont) # 더 나은 폰트를 위해서
+library(ggrepel)
+library(pander)
+
+# 한국어폰트를 위해서 어쩔 수 없음.
+theme_set(
+  theme_bw() + 
+    theme(
+      plot.title    = element_text(size=20, family="NanumBarunGothicBold"),
+      plot.subtitle = element_text(size=15, family="NanumBarunGothic"),
+      legend.title  = element_text(size=15, family="NanumBarunGothic"),
+      legend.text   = element_text(size=15, family="NanumBarunGothic"),
+      text          = element_text(size=15, family="NanumBarunGothic")
+    )
+  
+)
+
+당색   <- c("#d62728", "#1f77b4", "#2ca02c", "#bcbd22", "#9467bd", "gray", "white")
+지역색 <- c("#1f77b4", "#d62728", "orange", "purple", "#2ca02c") 
+
+## 선거정보 메타 함수 (오래된거여서 mutate같은걸로 안 됨)
+regional.classification <- function(x) {
+  # 권역정의
+  x$권역 <- "제주도/강원도"
+  x[which(x$광역 %in% c("경기도", "서울특별시", "인천광역시")),]$권역 <- "수도권"
+  x[which(x$광역 %in% c("전라남도", "전라북도", "광주광역시")),]$권역 <- "호남"
+  x[which(x$광역 %in% c("경상북도", "경상남도", "부산광역시", "대구광역시", "울산광역시")),]$권역 <- "영남"
+  x[which(x$광역 %in% c("충청북도", "충청남도", "대전광역시","세종특별자치시")),]$권역 <- "충청"
+  
+  return(x)
+}
+```
+
+# 동기
+
+이 예제를 작성하게 된 계기는 [3자구도를 산포도로 그리다가 잘못된 오류지적 포스팅](https://www.facebook.com/sh.matthewK/posts/1328130073940328)을 보고 나서다. 글에서 지적했듯이 2차원 산포도를 그릴 때 문제는 숨겨진 변수의 효과때문에 잘못된 분석을 한다는데 있다.
+
+이에 여러 한계가 있지만, ternary plot란 시각화가 도움이 될 수가 있다. 이 plot는 3가지 구성요소로 이뤄진 광물분석에 많이들 이용했다고 하는데, 자세히 해석하려고 들면 쫌 복잡해지는 면이 있지만 전체적인 3자구도를 조감하는데는 꽤 유용한 방법이다. 자세한 사항은 [위키피디아 항목](https://en.wikipedia.org/wiki/Ternary_plot)을 참조하시라. 이 예제는 ggtern package를 쓴다^[사실 쫌 불안한게, knitr지원이 제대로 안 되어서 그림만 뽑아다 다시 삽입했다.]
+
+# 시군구별 3자구도 시각화
+
+우선 앞의 동기가 되었던대로 시군구별 주요 3후보를 표시해보기로 하자. 
+
+그리기에 앞서서 최소한의 돌다리 두들기기를 하자. 즉, top 3 후보들의 득표율이 전체득표율에 차지하는 비중을 보는 것이다. 아무리 소수정당후보라고 하더라도 일부 시군구에서 유승민, 심상정후보의 득표율 합계가 15%를 넘는 경우가 있다는 것을 확인할 수 있다. 이러면 아무래도 왜곡이 일어날 수밖에 없다.
+
+
+```{r 3자구도분석준비, echo=FALSE}
+pres.2017.sgg <- read_tsv("../dataset/2017presidential_sgg.tsv")
+pres.2017.sgg <- regional.classification(pres.2017.sgg)
+
+# 이름을 바꿔야하는데, 이쁘지 않지만 그냥 임시로 쓰자
+pres.2017.sgg$문재인 <- pres.2017.sgg$더불어민주당 / (pres.2017.sgg$자유한국당 + pres.2017.sgg$더불어민주당 + pres.2017.sgg$국민의당)
+pres.2017.sgg$홍준표 <- pres.2017.sgg$자유한국당 / (pres.2017.sgg$자유한국당 + pres.2017.sgg$더불어민주당 + pres.2017.sgg$국민의당)
+pres.2017.sgg$안철수 <- pres.2017.sgg$국민의당 / (pres.2017.sgg$자유한국당 + pres.2017.sgg$더불어민주당 + pres.2017.sgg$국민의당)
+
+ggplot(pres.2017.sgg, aes(x = (더불어민주당+자유한국당+국민의당)/계)) +
+  geom_histogram() +
+  geom_vline(xintercept = 0.85, colour="salmon", linetype="dashed") +
+  scale_x_continuous(breaks=c(0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00)) +
+  ggtitle("2017년 대선 주요 3당 후보 득표율합 시군구별 분포")
+```
+
+해당 시군구는 어떤 곳들인가? 250개 시군구 중 36개 시군구들이다. 목록을 보면 아래와 같다.
+
+```{r 3자구도분석준비-2, echo=FALSE}
+library('scales')
+temp <- filter(pres.2017.sgg, (더불어민주당+자유한국당+국민의당)/계 < 0.85)
+temp$유승민 <- percent(temp$바른정당 / temp$계)
+temp$심상정 <- percent(temp$정의당 / temp$계)
+
+pres.2017.sgg$주의지역 <- (pres.2017.sgg$더불어민주당+pres.2017.sgg$자유한국당+pres.2017.sgg$국민의당)/pres.2017.sgg$계 < 0.85
+
+set.caption("2017년 대선 시군구별 1-3당 득표율 합계가 85% 미만인 지역들")
+panderOptions('digits', 2)
+
+pander(temp[,c("광역", "시군구", "유승민", "심상정")], justify=c("center", "center", "right", "right"))
+```
+
+이를 해소하는 방법은 여러가지가 있을 수 있다. 예를 들어 범보수후보로 홍준표와 유승민을 묶고, 진보쪽으론 문재인과 심상정을 묶어볼 수도 있겠지만, 이런 묶음에는 이론의 여지들도 있다. 예를 들어 내년 지방선거때 구도를 상상해볼 때는 정당별 연합관계 여부에 따라서 위와 같이 묶어서 계산해볼 수도 있을 것이다.
+
+이 예제에선 단순히 해당 시군구에 별표를 치고 그대로 보여주기로 한다. 즉, 각 시군구에서 3당 후보들이 득표한 득표수만을 놓고 "3당득표율"을 계산해서 이에 대해 ternary plot를 그려보자. 색칠은 권역별로 했는데, 이러니까 아주 분명한 패턴을 확인할 수 있다. 호남권역은 홍준표 득표율이 미미하고 문재인에 기울어졌지만 비교적 큰 분산의 득표율을 보여준 것, 영남의 경우는 홍준표만큼은 아니고 어느 정도 안철수의 득표율이 있는 가운데 홍준표가 강세인 지역과 문재인과 홍준표가 비등한 지역으로 갈린다는 것이다. 반대로 수도권은 살짝 문재인에게 기운 3자구도이며 충청지역은 이보다는 약간 문재인의 세가 약하되 크게 안철수쪽으로 이동하진 않았다는 점 등이 보인다.
+
+![](2017_presidential/unconventional/3자구도시각화-1.png)
+
+```{r 3자구도시각화, echo=FALSE, include=FALSE}
+library(ggtern)
+theme_set(
+  theme_bw() + 
+    theme(
+      plot.title    = element_text(size=20, family="NanumBarunGothicBold"),
+      plot.subtitle = element_text(size=15, family="NanumBarunGothic"),
+      legend.title  = element_text(size=15, family="NanumBarunGothic"),
+      legend.text   = element_text(size=15, family="NanumBarunGothic"),
+      text          = element_text(size=15, family="NanumBarunGothic")
+    )
+  
+)
+
+ggtern(pres.2017.sgg, aes(홍준표, 문재인, 안철수, colour=권역)) +
+  geom_point() +
+  theme_arrownormal() +
+  geom_text(
+    size=2.5,
+    vjust=-0.5,
+    family="NanumBarunGothic",
+    data=filter(pres.2017.sgg, 주의지역),
+    aes(label="*")
+  ) +
+  scale_colour_manual(
+   values=지역색
+  ) +
+  theme(
+            legend.position = c(0.2, 0.8),
+            tern.axis.title = element_text(size=10, family="NanumBarunGothic"),
+            tern.axis.arrow.text = element_text(size=10, family="NanumBarunGothic"),
+            axis.text = element_text(family="NanumBarunGothic"),
+            strip.text = element_text(size=10, family="NanumBarunGothic"),
+            legend.title = element_text(size=10, family="NanumBarunGothic"),
+            legend.text = element_text(size=10, family="NanumBarunGothic"))  +
+  ggtitle("2017년 대선 시군구별 주요3후보 득표율 3자구도 시각화",
+          subtitle = "(주요 3후보의 득표율 합계를 1로 간주, 실제 득표율합계 85% 미만 지역 별표로 표시)")
+```
+
+이렇듯 변형된 산포도 그래프는 3자구도에 꽤 좋은 모습을 보여준다. 이러면 바로 더 들어가서, 영남지역에서도 혹시 광역으로 득표율이 갈리는지 좀더 살펴볼 수도 있다. 경북지역은 홍준표 강세에 안철수가 경남보다 좀더 강했고, 부산과 울산은 좀더 문재인쪽으로 가 있는 것을 확인할 수 있다.
+
+![](2017_presidential/unconventional/3자구도시각화-영남편-1.png)
+
+```{r 3자구도시각화-영남편, echo=FALSE, include=FALSE}
+library(ggtern)
+
+
+ggtern(filter(pres.2017.sgg, 권역 == "영남"), aes(홍준표, 문재인, 안철수, colour=광역)) +
+  geom_point() +
+  theme_arrownormal() +
+  geom_text(
+    size=2.5,
+    vjust=-0.5,
+    family="NanumBarunGothic",
+    data=filter(pres.2017.sgg, 주의지역, 권역 == "영남"),
+    aes(label="*")
+  ) +
+  scale_colour_manual(
+   values=지역색
+  ) +
+  theme(
+            legend.position = c(0.2, 0.8),
+            tern.axis.title = element_text(size=10, family="NanumBarunGothic"),
+            tern.axis.arrow.text = element_text(size=10, family="NanumBarunGothic"),
+            axis.text = element_text(family="NanumBarunGothic"),
+            strip.text = element_text(size=10, family="NanumBarunGothic"),
+            legend.title = element_text(size=10, family="NanumBarunGothic"),
+            legend.text = element_text(size=10, family="NanumBarunGothic"))  +
+  ggtitle("2017년 대선 시군구별 주요3후보 득표율 3자구도 시각화 (영남만)",
+          subtitle = "(주요 3후보의 득표율 합계를 1로 간주, 실제 득표율합계 85% 미만 지역 별표로 표시)")
+```
+
+사실 각 시군구별로 득표수는 훨씬 더 크게 차이가 난다. 따라서 유권자수가 많은 시군구에 비해 유권자수가 적은 시군구가 과대대표되는 한계가 있다. 이 정보를 ternary plot방식에 더 집어넣을 수 있을까? 점의 크기를 달리하는 방법이 있겠다. 물론 정확하게 숫자에 비례하면 좋겠지만 여러가지 사정상 적절한 구간으로 나누어서 크기를 달리해봤다. 경남의 몇몇 중량감 있는 시군구가 좀더 잘 보인다.
+
+![](2017_presidential/unconventional/3자구도시각화-영남편-투표수포함-1.png)
+
+```{r 3자구도시각화-영남편-투표수포함, echo=FALSE, include=FALSE}
+library(ggtern)
+
+ggtern(filter(pres.2017.sgg, 권역 == "영남"), aes(홍준표, 문재인, 안철수, colour=광역, size=더불어민주당+국민의당+자유한국당)) +
+  geom_point(alpha=0.5) +
+  theme_arrownormal() +
+  geom_text(
+    size=2.5,
+    vjust=-0.5,
+    family="NanumBarunGothic",
+    data=filter(pres.2017.sgg, 주의지역, 권역 == "영남"),
+    aes(label="*")
+  ) +
+  scale_size_continuous(name="3당후보 득표수합계(명)", labels=comma) + 
+  scale_colour_manual(
+   values=지역색
+  ) +
+  theme(
+            legend.position = c(0.2, 0.8),
+            tern.axis.title = element_text(size=10, family="NanumBarunGothic"),
+            tern.axis.arrow.text = element_text(size=10, family="NanumBarunGothic"),
+            axis.text = element_text(family="NanumBarunGothic"),
+            strip.text = element_text(size=10, family="NanumBarunGothic"),
+            legend.title = element_text(size=10, family="NanumBarunGothic"),
+            legend.text = element_text(size=10, family="NanumBarunGothic"))  +
+  ggtitle("2017년 대선 시군구별 주요3후보 득표율 3자구도 시각화 (영남만)",
+          subtitle = "(주요 3후보의 득표율 합계를 1로 간주, 실제 득표율합계 85% 미만 지역 별표로 표시)\n(3당후보 총득표수에 따라 점의 크기를 달리함)")
+```
+
+
+내친김에 전체 시군구 대비해서도 해보자. 영호남의 중량감이 다른 지방과 다른 것이 비교적 잘 들어오고, 수도권의 규모도 어느 정도는 전달된다.
+
+![](2017_presidential/unconventional/3자구도시각화-투표수포함-1.png)
+
+```{r 3자구도시각화-투표수포함, echo=FALSE, include=FALSE}
+ggtern(pres.2017.sgg, aes(홍준표, 문재인, 안철수, colour=권역, size=더불어민주당+자유한국당+국민의당)) +
+  geom_point(alpha=0.3) +
+  scale_size_continuous(name="3당후보 득표수합계(명)", labels=comma) + 
+  theme_arrownormal() +
+  geom_text(
+    size=2.5,
+    vjust=-0.5,
+    family="NanumBarunGothic",
+    data=filter(pres.2017.sgg, 주의지역),
+    aes(label="*")
+  ) +
+  scale_colour_manual(
+   values=지역색
+  ) +
+  theme(
+            legend.position = c(0.2, 0.8),
+            tern.axis.title = element_text(size=10, family="NanumBarunGothic"),
+            tern.axis.arrow.text = element_text(size=10, family="NanumBarunGothic"),
+            axis.text = element_text(family="NanumBarunGothic"),
+            strip.text = element_text(size=10, family="NanumBarunGothic"),
+            legend.title = element_text(size=10, family="NanumBarunGothic"),
+            legend.text = element_text(size=10, family="NanumBarunGothic"))  +
+  ggtitle("2017년 대선 시군구별 주요3후보 득표율 3자구도 시각화",
+          subtitle = "(주요 3후보의 득표율 합계를 1로 간주, 실제 득표율합계 85% 미만 지역 별표로 표시)")
+```
+
+# 재외국민투표층 특성
+
+자, 위는 총투표의 시군구별 분포였다. 투표형태에 따라서 3자구도로 표시하면 뭔가 다른 패턴이 나올 수 있을까? 예를 들어 재외국민투표에서는 압도적으로 문재인후보의 득표율이 높았다고 한다. 이 부분은 나중에 추가하자.
+
+```{r}
+
+```
+
+
+# 2016년 구도와 비교
+
+자, 다행히(?)도 2016년 총선도 3자구도 하에서 치뤄졌다. 2016년 지역구 및 비례대표 결과들을 지역구 선거구별 또는 읍면동별 분포로 ternary plot으로 그린 것은 [예전에 twitter에서 제시한 바](https://twitter.com/nobody_indepth/status/733113391401861120) 있다.
+
+또한 2017년 대선과 2016년 총선 비례대표득표율(읍면동) 결과 비교 예제는 이전 [예제](https://wwolf.github.io/2017-presidential-preliminary.html)에서 짚어보기도 했다. 물론 바른정당이 등장했지만, 대부분의 시군구에서 3당이 85% 이상의 득표율을 갖고 갔으므로, 이 3당의 득표수 합산 대비 3당득표율 변화를 계산해볼 수가 있다. 이 3당득표율변화의 합산값은 항상 0이다. 따라서 ternary plot을 그리는 것이 이론적으론 가능하다.
+
+```{r 3자구도분석준비-2016-1, echo=FALSE}
+general.2016.emd <- read_tsv("../dataset/2016general_prop_emd.tsv")
+general.2016.sgg <- general.2016.emd %>%
+  group_by(권역, 광역, 시군구) %>%
+  summarize_if(
+    .predicate = function(x) is.numeric(x),
+    .funs = funs("sum")
+  )
+
+# 이름을 바꿔야하는데, 이쁘지 않지만 그냥 임시로 쓰자
+general.2016.sgg$더불어민주당.2016 <- general.2016.sgg$더불어민주당 / (general.2016.sgg$새누리당 + general.2016.sgg$더불어민주당 + general.2016.sgg$국민의당)
+general.2016.sgg$새누리당.2016 <- general.2016.sgg$새누리당 / (general.2016.sgg$새누리당 + general.2016.sgg$더불어민주당 + general.2016.sgg$국민의당)
+general.2016.sgg$국민의당.2016 <- general.2016.sgg$국민의당 / (general.2016.sgg$새누리당 + general.2016.sgg$더불어민주당 + general.2016.sgg$국민의당)
+
+ggplot(general.2016.sgg, aes(x = (더불어민주당+새누리당+국민의당)/계)) +
+  geom_histogram() +
+  geom_vline(xintercept = 0.85, colour="salmon", linetype="dashed") +
+  scale_x_continuous(breaks=c(0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00)) +
+  ggtitle("2017년 대선 주요 3당 후보 득표율합 시군구별 분포")
+```
+
+2016년 당시 해당 시군구는 어떤 곳들인가? 250개 시군구 중 77개 시군구들이다. 목록을 보면 아래와 같고, 정의당과 원외정당의 득표율이 높아서임을 확인할 수 있다. 원외정당은 기독자유당이나 녹색당을 포괄하고 이들을 제외하곤 꼭 3당후보 어느 쪽에 왜곡을 일으킨다고 보기 어렵다고 보고, 정의당+녹색당+기독자유당의 비례득표율이 15%를 넘어가는 지역만 별도 별표 표시를 하고 진행해보자.
+
+```{r 3자구도분석준비-2016-2, echo=FALSE}
+library('scales')
+temp <- filter(general.2016.sgg, (더불어민주당+새누리당+국민의당)/계 < 0.85)
+temp$정의당.2016      <- percent(temp$정의당/temp$계)
+temp$원외정당.2016    <- percent((temp$계 - temp$더불어민주당 - temp$새누리당 - temp$국민의당 - temp$정의당)/temp$계)
+temp$녹색당.2016      <- percent(temp$녹색당/temp$계)
+temp$기독자유당.2016  <- percent(temp$기독자유당/temp$계)
+
+general.2016.sgg$주의지역 <- (general.2016.sgg$정의당+general.2016.sgg$녹색당+general.2016.sgg$기독자유당)/general.2016.sgg$계 >= 0.15
+
+
+set.caption("2017년 대선 시군구별 1-3당 득표율 합계가 85% 미만인 지역들")
+panderOptions('digits', 2)
+
+pander(temp[,c("광역", "시군구", "정의당.2016", "원외정당.2016", "녹색당.2016", "기독자유당.2016")], justify=c("center", "center", "right", "right", "right", "right"))
+```
+
+이렇게 2016년 비례득표를 위에서 했던 것과 같이 시각화해서 비교해보면, 호남에서 국민의당이 훨씬 높았었고, 총선이 대선에 비해서 수도권은 3자구도에 가깝고 영남 또한 새누리당의 강세가 더 쎘다는 것이 드러난다.
+
+![](2017_presidential/unconventional/3자구도시각화-2016-투표수포함-1.png)
+
+```{r 3자구도시각화-2016-투표수포함, echo=FALSE, include=FALSE}
+ggtern(general.2016.sgg, aes(새누리당.2016, 더불어민주당.2016, 국민의당.2016, colour=권역, size=더불어민주당+새누리당+국민의당)) +
+  geom_point(alpha=0.3) +
+  scale_size_continuous(name="3당후보 득표수합계(명)", labels=comma) + 
+  theme_arrownormal() +
+  geom_text(
+    size=2.5,
+    vjust=-1.0,
+    family="NanumBarunGothic",
+    data=filter(general.2016.sgg, 주의지역),
+    aes(label="*")
+  ) +
+  scale_colour_manual(
+   values=지역색
+  ) +
+  theme(
+            legend.position = c(0.2, 0.8),
+            tern.axis.title = element_text(size=10, family="NanumBarunGothic"),
+            tern.axis.arrow.text = element_text(size=10, family="NanumBarunGothic"),
+            axis.text = element_text(family="NanumBarunGothic"),
+            strip.text = element_text(size=10, family="NanumBarunGothic"),
+            legend.title = element_text(size=10, family="NanumBarunGothic"),
+            legend.text = element_text(size=10, family="NanumBarunGothic"))  +
+  ggtitle("2016년 총선 비례득표 시군구별 주요3당 득표율 3자구도 시각화",
+          subtitle = "(주요 3후보의 득표율 합계를 1로 간주, 정의당+녹색당+기독자유당 득표율합계 15% 이상 지역 별표로 표시)")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
