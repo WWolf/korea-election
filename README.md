@@ -16,4 +16,4 @@
 * 각종 사회경제지표와 시군구결과와의 비교는 [오마이뉴스의 깃헙](https://github.com/OhmyNews/2017-Election) 에서 확인하십시오.
 
 * 김승범님의 [반응형 지도작업](https://bl.ocks.org/vuski/raw/7e482f13ef2b2ec4c14bb3622f05c353/) 추천합니다.
-    - 2017년 현재 지도 읍면동(행정동) 레벨까지의 지도 정보는 마찬가지로 [김승범님의 깃헙자료](https://gist.github.com/vuski/7e482f13ef2b2ec4c14bb3622f05c353) 추천합니다.
+* 2017년 현재 지도 읍면동(행정동) 레벨까지의 지도 정보는 [김승범님의 깃헙자료](https://github.com/vuski/admdongkor) 추천합니다.
