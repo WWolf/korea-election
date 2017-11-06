@@ -1,0 +1,213 @@
+---
+title: "2014년 지선결과 rvest로 뽑기"
+author: '@nobody_indepth'
+date: "11/6/2017"
+output: html_document
+---
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(rvest)
+library(pander)
+
+reload <- FALSE # 다시 웹에 접속해서 코드 등 데이터를 긁어올 경우 TRUE로 바꾼다.
+
+# 한국어폰트를 위해서 어쩔 수 없음.
+theme_set(
+  theme_bw() + 
+    theme(
+      plot.title    = element_text(size=20, family="NanumBarunGothicBold"),
+      plot.subtitle = element_text(size=15, family="NanumBarunGothic"),
+      text          = element_text(size=15, family="NanumBarunGothic")
+          )
+  
+)
+
+당색   <- c("#d62728", "#1f77b4", "#2ca02c", "#bcbd22", "#9467bd", "gray", "white")
+지역색 <- c("#1f77b4", "#d62728", "orange", "purple", "#2ca02c") 
+
+## 선거정보 메타 함수 (오래된거여서 mutate같은걸로 안 됨)
+regional.classification <- function(x) {
+  # 권역정의
+  x$권역 <- "제주도/강원도"
+  x[which(x$광역 %in% c("경기도", "서울특별시", "인천광역시")),]$권역 <- "수도권"
+  x[which(x$광역 %in% c("전라남도", "전라북도", "광주광역시")),]$권역 <- "호남"
+  x[which(x$광역 %in% c("경상북도", "경상남도", "부산광역시", "대구광역시", "울산광역시")),]$권역 <- "영남"
+  x[which(x$광역 %in% c("충청북도", "충청남도", "대전광역시","세종특별자치시")),]$권역 <- "충청"
+  
+  return(x)
+}
+```
+
+# 중앙선관위 2014년 선거결과 중앙선관위로부터 뽑기
+
+R의 rvest library를 사용해서 R을 통해 좀 지저분하지만 차근차근 뽑아보기로 하자. 우선 읍면동별 데이터를 뽑기로 하자.
+
+```{r}
+if (reload) {
+  require(tidyverse)
+  require(rvest)
+  
+  # 시.도의회의원선거 페이지 하나 뽑아보자. electionCode=5이다. 완전한 형식이어야한다.
+  sample_session <- html_session("http://info.nec.go.kr/electioninfo/electionInfo_report.xhtml?electionId=0000000000&requestURI=%2FWEB-INF%2Fjsp%2Felectioninfo%2F0000000000%2Fvc%2Fvccp04.jsp&topMenuId=VC&secondMenuId=VCCP04&menuId=VCCP04&statementId=VCCP04_%232&oldElectionType=1&electionType=4&electionName=20140604&electionCode=5&cityCode=4300&sggCityCode=-1&townCodeFromSgg=-1&townCode=4301&sggTownCode=5430401&x=35&y=11")
+  
+  sample_page <- read_html(sample_session)
+  
+  # 광역 코드를 뽑자.
+  cityCodeList <- tibble( 
+    광역 = sample_page %>%
+      html_nodes("#cityCode option") %>%
+      html_text(),
+    광역코드 = sample_page %>%
+    html_nodes("#cityCode option") %>%
+    html_attr("value")
+  ) %>%
+    filter( 광역코드 != "-1" ) # "선택" 항을 제거한다.
+  
+  # 이제 각 시도별로 선거구 townCode를 뽑아야한다. 매번 접속해봐야한다. 대충하자.
+  extract.townCode <- function( cityCode ) {
+    sample_form <- set_values( html_form(read_html(sample_session))[[1]], 
+                               electionName = "20140604",
+                               electionType = "4",
+                               electionCode = "5",
+                               cityCode = cityCode
+                   )
+    temp <- submit_form(sample_session, sample_form)
+    
+    townCode <- tibble(
+      시군구     = temp %>%
+                html_nodes("#townCode option") %>%
+                html_text(),
+      시군구코드 = temp %>%
+                html_nodes("#townCode option") %>%
+                html_attr("value")
+    )  %>%
+      filter( 시군구코드 != "-1")
+  
+    Sys.sleep(3.0)
+    
+    return(add_column(townCode, 광역코드=cityCode, .before="시군구"))
+  }
+  
+  # extract.townCode( "부산광역시", "2600" )
+  
+  # 마지막으로 각 시군구별로 선거구가 복수개 존재할 수 있다.
+  extract.sggTownCode <- function( townCode, townCodeList ) {
+    cityCode = filter(townCodeList, 시군구코드 == townCode)$광역코드
+    
+    sample_form <- set_values( html_form(read_html(sample_session))[[1]], 
+                               electionName = "20140604",
+                               electionType = "4",
+                               electionCode = "5",
+                               cityCode = cityCode,
+                               townCode = townCode,
+                               sggTownCode="5430401"   # 아무거나 집어넣어주면 알아서 바꿔준다.
+                    )
+    temp <- submit_form(sample_session, sample_form)
+    
+    sggTownCode <- tibble(
+      선거구  = temp %>%
+                html_nodes("#sggTownCode option") %>%
+                html_text(),
+      선거구코드 = temp %>%
+                html_nodes("#sggTownCode option") %>%
+                html_attr("value")
+    )  %>%
+      filter( 선거구코드 != "-1")
+  
+    Sys.sleep(3.0)
+    
+    return(add_column(sggTownCode, 광역코드=cityCode, 시군구코드=townCode, .before="선거구"))
+  }
+  
+  # 이제 각 지역구 시도의원 선거열람표를 작성할 수가 있다. 중앙선관위서버에서 DDOS공격이라고 오해하지 않게 적당한 시간간격으로 데이터를 뽑자. (3초)
+  
+  townCodeList <- cityCode %>%
+    inner_join(
+      cityCode$광역코드 %>%
+        lapply(extract.townCode) %>%
+        bind_rows(),
+      by="광역코드"
+    )
+  
+  sggTownCodeList <- townCodeList %>%
+    inner_join(
+      townCodeList$시군구코드 %>%
+        lapply(extract.sggTownCode, townCodeList) %>%
+        bind_rows(),
+      by=c("광역코드", "시군구코드")
+    )
+  
+  write_tsv(cityCodeList, "../dataset/2014_citycodelist.tsv")
+  write_tsv(townCodeList, "../dataset/2014_towncodelist.tsv")
+  write_tsv(sggTownCodeList, "../dataset/2014_sggtowncodelist.tsv") # 이것만 있으면 사실상 읽을 수 있다.
+} 
+
+# 다시 로드한다. 여기서 코드가 모두 숫자로 변환된다.
+cityCodeList <- read_tsv("../dataset/2014_citycodelist.tsv")
+townCodeList <- read_tsv("../dataset/2014_towncodelist.tsv")
+sggTownCodeList <- read_tsv("../dataset/2014_sggtowncodelist.tsv")
+
+
+if (reload) {
+
+  # 이제 선거결과를 뽑을 수 있다. 여기서 후보자수가 다르기때문에, long form으로 바꿔줘서 저장하는 수고를 해야한다.  
+  
+  sample_session <- html_session("http://info.nec.go.kr/electioninfo/electionInfo_report.xhtml?electionId=0000000000&requestURI=%2FWEB-INF%2Fjsp%2Felectioninfo%2F0000000000%2Fvc%2Fvccp04.jsp&topMenuId=VC&secondMenuId=VCCP04&menuId=VCCP04&statementId=VCCP04_%232&oldElectionType=1&electionType=4&electionName=20140604&electionCode=5&cityCode=1100&sggCityCode=-1&townCodeFromSgg=-1&townCode=1101&sggTownCode=5110101&x=35&y=11")
+  
+  extract.electionTable <- function( sggTownCode, sggTownCodeList ) {
+    cityCode = filter(sggTownCodeList, 선거구코드 == sggTownCode)$광역코드
+    townCode = filter(sggTownCodeList, 선거구코드 == sggTownCode)$시군구코드
+    print(sggTownCode)
+    
+    temp <- read_html(
+      paste0("http://info.nec.go.kr/electioninfo/electionInfo_report.xhtml?electionId=0000000000&requestURI=%2FWEB-INF%2Fjsp%2Felectioninfo%2F0000000000%2Fvc%2Fvccp04.jsp&topMenuId=VC&secondMenuId=VCCP04&menuId=VCCP04&statementId=VCCP04_%232&oldElectionType=1&electionType=4&electionName=20140604&electionCode=5&cityCode=",
+             cityCode,
+             "&sggCityCode=-1&townCodeFromSgg=-1&townCode=",
+             townCode,
+             "&sggTownCode=", 
+             sggTownCode,
+             "&x=35&y=11")
+      ) %>%
+      html_table(fill = TRUE)
+    
+    # absolutely, there are only one table
+    temp <- temp[[1]]
+  
+    if (nrow(temp) < 3) {
+      # 무투표당선지
+      print(paste0("무투표당선지: ", filter(sggTownCodeList, 선거구코드 == sggTownCode)$선거구코드))
+      return(NULL)
+    }
+    # now fix the filling up of header issue    
+    header.row <- as.character(temp[1,])
+    header.row <- header.row[! (header.row %in% c("후보자별 득표수", "계"))]
+    header.row <- c(header.row, "유효투표수", "무효투표수", "기권수")
+    
+    colnames(temp) <- header.row
+    temp <- temp[-1,]
+
+    # now make this long form, change appropriate numeric and return
+    return(temp %>% 
+      gather(key=후보, value=득표수, -c(읍면동명, 구분, 선거인수, 투표수, 유효투표수, 무효투표수, 기권수)) %>%
+      add_column(광역코드=cityCode, 시군구코드=townCode, 선거구코드=sggTownCode) %>%
+      mutate_at(c("선거인수", "투표수", "유효투표수", "무효투표수", "기권수", "득표수"), funs(as.numeric(gsub(',', '', .))))
+    )
+  }
+  
+  # extract.electionTable( 5110101, sggTownCodeList )
+  # sggTownCodeList <- head(sggTownCodeList, 2)
+  
+  sggTownElectionResult <- sggTownCodeList %>%
+    left_join( # 무투표당선선거구들을 보존하기 위해서.
+      sggTownCodeList$선거구코드 %>%
+        lapply(extract.electionTable, sggTownCodeList) %>%
+        bind_rows(),
+      by=c("광역코드", "시군구코드", "선거구코드")
+    )
+
+  write_tsv(sggTownElectionResult, "../dataset/2014_prov_legislative.tsv") # 전부 저장하자.
+}
+
+시도의원지역구 <- read_tsv("../dataset/2014_prov_legislative.tsv")
+```
