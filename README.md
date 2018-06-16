@@ -1,4 +1,4 @@
-![repository데이터기반예제](2017-example.png)
+![repository데이터기반예제](animation.gif)
 (위는 이 repository의 데이터와 예제코드로 생성한 시각화 예제입니다)
 
 # 이 repository는...
